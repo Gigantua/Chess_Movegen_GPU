@@ -66,5 +66,8 @@
     <ClInclude Include="cu_TestTensor.h">
       <Filter>Movegen</Filter>
     </ClInclude>
+    <ClInclude Include="cu_Bitrotation.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

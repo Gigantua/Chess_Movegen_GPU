@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 //(c) Gerd Isenberg, Aleks Peshkov 2007
 //Subtracting a Rook from a Blocking Piece - https://www.chessprogramming.org/Subtracting_a_Rook_from_a_Blocking_Piece
@@ -8,7 +8,7 @@
 #include <type_traits>
 #include "cu_Common.h"
 
-//Cuda Translation by Daniel Inf�hr - Jan. 2022
+//Cuda Translation by Daniel Inführ - Jan. 2022
 //Contact: daniel.infuehr@live.de
 
 namespace HyperbolaQsc {
@@ -87,21 +87,6 @@ namespace HyperbolaQsc {
 		static const Mask mask[64];
 	__constant__ 
 		static const uint8_t rank_attack[512];
-
-	/* Daniel appendix:
-How to do fast lookups:
-__constant__
-static const unsigned char BIT_MASK[4][8] = {
-			{ 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 }, // 1 bit
-			{ 0x03, 0x0C, 0x30, 0xC0, 0x00, 0x00, 0x00, 0x00 }, // 2 bit
-			{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // Nan
-			{ 0x0F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  // 4 bit
-};
-
-__global__ void j(unsigned char *d){
-		*d = BIT_MASK[threadIdx.x][0];
-}
-*/
 
 	void Init() {
 		gpuErrchk(cudaMemcpyToSymbol(mask, init_mask.data(), sizeof(init_mask)));

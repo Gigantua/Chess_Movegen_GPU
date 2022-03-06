@@ -23,6 +23,7 @@
 #include "cu_NoHeadache.h"
 #include "cu_AVXShift.h"
 #include "cu_SlideArithmInline.h"
+#include "cu_Bitrotation.h"
 
 /// <summary>
 /// Complete Algorithm Runs on the GPU only
@@ -103,6 +104,9 @@ __device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ, uint32_t& x, uin
     if constexpr (mode == 16) {
         return SlideArithmInline::Queen(sq, occ);
     }
+    if constexpr (mode == 17) {
+        return Bitrotation::Queen(sq, occ);
+    }
 }
 const char* AlgoName(int mode) {
     switch (mode)
@@ -124,6 +128,7 @@ const char* AlgoName(int mode) {
         case 14: return "NO HEADACHE              ";
         case 15: return "AVX Branchless Shift     ";
         case 16: return "Slide Arithmetic Inline  ";
+        case 17: return "Bitrotation o^(o-2r)     ";
         default:
             return "";
     }
@@ -136,7 +141,8 @@ __global__ void cu_GetQueenAttacks(Cuda_Chessprocessor params)
     uint32_t x = 123456789 * gid, y = 362436069 ^ gid, z = 521288629 + (gid * gid + 1);
 
     volatile uint64_t* occs = params.attacks;
-    for (int i = 0; i < params.loops; i++) {
+    const int loopcnt = params.loops;
+    for (int i = 0; i < loopcnt; i++) {
         uint32_t sq = cu_rand32(x, y, z) & 63;
         uint64_t occ = cu_rand64(x, y, z);
         occs[gid] ^= Queen<mode>(sq, occ, x, y, z);
@@ -146,6 +152,7 @@ __global__ void cu_GetQueenAttacks(Cuda_Chessprocessor params)
 template<int mode>
 void TestChessprocessor(int blocks, int threadsperblock) {
     int lookups = blocks * threadsperblock;
+    uint64_t* results = new uint64_t[lookups];
     Cuda_Chessprocessor p(lookups);
     std::vector<double> avg;
     std::cout << std::fixed << std::setprecision(2);
@@ -163,6 +170,9 @@ void TestChessprocessor(int blocks, int threadsperblock) {
         gpuErrchk(cudaDeviceSynchronize());
         auto t2 = std::chrono::high_resolution_clock::now();
 
+        //verification of buffer on the cpu side. 
+        //cudaMemcpy(results, p.attacks, lookups * 8, cudaMemcpyKind::cudaMemcpyDeviceToHost);
+
         double GLU = p.LookupCount() * 1.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
         avg.push_back(GLU);
         //std::cout << "\t" << MLU << "\n";
@@ -173,6 +183,7 @@ void TestChessprocessor(int blocks, int threadsperblock) {
 
     double MegaLookups = accumulate(avg.begin(), avg.end(), 0.0) / avg.size();
     std::cout << MegaLookups << " GigaQueens/s\n";
+    delete[] results;
 }
 
 
@@ -194,6 +205,8 @@ int main()
 
     //Leorik, QBB, ObstructionDiff
 
+    TestChessprocessor<17>(blocks, threadsperblock);
+    TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<0>(blocks, threadsperblock);
     TestChessprocessor<1>(blocks, threadsperblock);
     TestChessprocessor<2>(blocks, threadsperblock);
@@ -211,4 +224,5 @@ int main()
     TestChessprocessor<14>(blocks, threadsperblock);
     TestChessprocessor<15>(blocks, threadsperblock);
     TestChessprocessor<16>(blocks, threadsperblock);
+    TestChessprocessor<17>(blocks, threadsperblock);
 }

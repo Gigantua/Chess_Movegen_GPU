@@ -84,6 +84,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cu_AVXShift.h" />
+    <ClInclude Include="cu_Bitrotation.h" />
     <ClInclude Include="cu_Bob.h" />
     <ClInclude Include="cu_Common.h" />
     <ClInclude Include="cu_Dumb7Fill.h" />
