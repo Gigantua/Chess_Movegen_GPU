@@ -186,7 +186,6 @@ void TestChessprocessor(int blocks, int threadsperblock) {
     delete[] results;
 }
 
-
 int main()
 {
     constexpr int blocks = 4096;
@@ -204,8 +203,6 @@ int main()
     SISSY::Init();
 
     //Leorik, QBB, ObstructionDiff
-
-    TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<0>(blocks, threadsperblock);
     TestChessprocessor<1>(blocks, threadsperblock);
