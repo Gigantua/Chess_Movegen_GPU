@@ -15,8 +15,9 @@ namespace Bitrotation {
 #	define BitFunction __inline__ __device__ uint64_t
 #	define dir_HO(X) (0xFFull << (X & 56))
 #	define dir_VE(X) (0x0101010101010101ull << (X & 7))
-#	define dir_D1(X) (mask_shift<0x8040201008040201ull>((X & 7) - (X >> 3)))
+#	define dir_D1(X) (mask_shift<0x8040201008040201ull>(    (X & 7) - (X >> 3)))
 #	define dir_D2(X) (mask_shift<0x0102040810204080ull>(7 - (X & 7) - (X >> 3)))
+#	define bitswap(X) __brevll(X)
 
 	template<uint64_t bb>
 	constexpr BitFunction mask_shift(int ranks) {
@@ -24,16 +25,20 @@ namespace Bitrotation {
 	}
 
 	/* Generate attack using the hyperbola quintessence approach */
-	BitFunction attack(uint64_t o, uint32_t sq) 
+	BitFunction attack(uint64_t occ, uint64_t mask, uint64_t s_bit, uint64_t s_rev)
 	{
-		return ((o - (1ull << sq)) ^ __brevll(__brevll(o) - (1ull << (sq ^ 63))));
+		const uint64_t o = (occ & mask);
+		return ((o - s_bit) ^ bitswap(bitswap(o) - s_rev)) & mask;
 	}
 
 	BitFunction Queen(const int s, const uint64_t occ) {
-		return (attack(occ & dir_HO(s), s) & dir_HO(s))
-			 | (attack(occ & dir_VE(s), s) & dir_VE(s))
-			 | (attack(occ & dir_D1(s), s) & dir_D1(s))
-			 | (attack(occ & dir_D1(s), s) & dir_D2(s));
+		const uint64_t s_bit = 1ull << s;
+		const uint64_t s_rev = (1ull << (s ^ 56));
+		
+		return (attack(occ, dir_HO(s) ^ s_bit, s_bit, s_rev))
+			 ^ (attack(occ, dir_VE(s) ^ s_bit, s_bit, s_rev))
+			 ^ (attack(occ, dir_D1(s) ^ s_bit, s_bit, s_rev))
+			 ^ (attack(occ, dir_D2(s) ^ s_bit, s_bit, s_rev));
 	}
 #	undef BitFunction
 #	undef dir_HO(X)
