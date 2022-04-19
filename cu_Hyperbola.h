@@ -83,10 +83,8 @@ namespace HyperbolaQsc {
 	static const std::array<Mask, 64> init_mask = InitMask();
 	static const std::array<uint8_t, 512> init_rank_attack = InitRank();
 
-	__constant__ 
-		static const Mask mask[64];
-	__constant__ 
-		static const uint8_t rank_attack[512];
+	__constant__ Mask mask[64];
+	__constant__ uint8_t rank_attack[512];
 
 	void Init() {
 		gpuErrchk(cudaMemcpyToSymbol(mask, init_mask.data(), sizeof(init_mask)));

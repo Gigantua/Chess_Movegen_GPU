@@ -8,8 +8,9 @@
 #include <type_traits>
 #include "cu_Common.h"
 
-//Cuda Translation by Daniel Inführ - Jan. 2022
-//Contact: daniel.infuehr@live.de
+//Improvement by Daniel Inführ 2022
+//Update 2022: This is the fastest algorithm known on any platform by far! http://www.talkchess.com/forum3/viewtopic.php?f=7&t=79078&start=20
+//bitswap intrinsics harmonizes all 4 possible paths
 
 namespace Bitrotation {
 #	define BitFunction __inline__ __device__ uint64_t
@@ -29,22 +30,49 @@ namespace Bitrotation {
 	{
 		const uint64_t o = (occ & mask);
 		return ((o - s_bit) ^ bitswap(bitswap(o) - s_rev)) & mask;
+		//((occ - (1ull << sq)) ^ bit_reverse((bit_reverse(occ) - bit_reverse((1ull << sq)))))
 	}
+
+	__shared__ uint64_t shr_HO[64];
+	__shared__ uint64_t shr_VE[64];
+	__shared__ uint64_t shr_D1[64];
+	__shared__ uint64_t shr_D2[64];
+	__shared__ uint64_t shr_bit[64];
+	__shared__ uint64_t shr_rev[64];
 
 	BitFunction Queen(const int s, const uint64_t occ) {
 		const uint64_t s_bit = 1ull << s;
 		const uint64_t s_rev = (1ull << (s ^ 56));
 		
-		return (attack(occ, dir_HO(s) ^ s_bit, s_bit, s_rev))
-			 ^ (attack(occ, dir_VE(s) ^ s_bit, s_bit, s_rev))
-			 ^ (attack(occ, dir_D1(s) ^ s_bit, s_bit, s_rev))
-			 ^ (attack(occ, dir_D2(s) ^ s_bit, s_bit, s_rev));
+		return (attack(occ, shr_HO[s], s_bit, s_rev))
+			 ^ (attack(occ, shr_VE[s], s_bit, s_rev))
+			 ^ (attack(occ, shr_D1[s], s_bit, s_rev))
+			 ^ (attack(occ, shr_D2[s], s_bit, s_rev));
 	}
-#	undef BitFunction
-#	undef dir_HO(X)
-#	undef dir_VE(X)
-#	undef dir_D1(X)
-#	undef dir_D2(X)
+
+	__inline__ __device__ void Prepare(unsigned int threadIdx)
+	{
+		if (threadIdx < 64)
+		{
+			const uint64_t s_bit = 1ull << threadIdx;
+			const uint64_t s_rev = (1ull << (threadIdx ^ 56));
+
+			shr_HO[threadIdx] = dir_HO(threadIdx) ^ s_bit;
+			shr_VE[threadIdx] = dir_VE(threadIdx) ^ s_bit;
+			shr_D1[threadIdx] = dir_D1(threadIdx) ^ s_bit;
+			shr_D2[threadIdx] = dir_D2(threadIdx) ^ s_bit;
+			shr_bit[threadIdx] = s_bit;
+			shr_rev[threadIdx] = s_rev;
+		}
+		__syncthreads();
+	}
+
+#undef BitFunction
+#undef dir_HO
+#undef dir_VE
+#undef dir_D1
+#undef dir_D2
+#undef bitswap
 }
 
 
@@ -60,12 +88,4 @@ __constant__ static const uint64_t d2[] = { 1ull, 258ull, 66052ull, 16909320ull,
 		145249953336295424ull, 290499906672525312ull, 580999813328273408ull, 1161999622361579520ull, 1108169199648ull, 283691315109952ull, 72624976668147840ull, 145249953336295424ull, 290499906672525312ull, 580999813328273408ull, 1161999622361579520ull, 2323998145211531264ull, 283691315109952ull, 72624976668147840ull, 145249953336295424ull,
 		290499906672525312ull, 580999813328273408ull, 1161999622361579520ull, 2323998145211531264ull, 4647714815446351872ull, 72624976668147840ull, 145249953336295424ull, 290499906672525312ull, 580999813328273408ull, 1161999622361579520ull, 2323998145211531264ull, 4647714815446351872ull, 9223372036854775808ull };
 
-BitFunction mask_d1(int sq) {
-
-	return d1[sq];
-}
-
-BitFunction mask_d2(int sq) {
-	return d2[sq];
-}
 */

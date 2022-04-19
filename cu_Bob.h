@@ -99,12 +99,20 @@ namespace BobLU {
 		return ray;
 	}
 	const std::array<Rays, 64> ray_src = Initialize();
-
-	__constant__
-	static const Rays ray[64];
+	__constant__ Rays ray_const[64];
+	__shared__   Rays ray_share[64];
 
 	void Init() {
-		gpuErrchk(cudaMemcpyToSymbol(ray, ray_src.data(), sizeof(ray_src)));
+		gpuErrchk(cudaMemcpyToSymbol(ray_const, ray_src.data(), sizeof(ray_src)));
+	}
+
+	__inline__ __device__ void Prepare(int threadIdx)
+	{
+		if (threadIdx < 64)
+		{
+			ray_share[threadIdx] = ray_const[threadIdx];
+		}
+		__syncthreads();
 	}
 
 	__device__ uint64_t countr_zero(uint64_t value)
@@ -119,17 +127,17 @@ namespace BobLU {
 
 	__device__ uint64_t Queen(int sq, uint64_t occ) {
 		occ |= 0x8000000000000001;
-		const Rays& r = ray[sq];
+		const Rays& r = ray_share[sq];
 
 		uint64_t bb = (
-			  ray[countr_zero(r.rwsNW & occ)].rayNW
-			| ray[countr_zero(r.rwsNN & occ)].rayNN
-			| ray[countr_zero(r.rwsNE & occ)].rayNE
-			| ray[countr_zero(r.rwsEE & occ)].rayEE
-			| ray[countl_zero(r.rwsSE & occ)].raySE
-			| ray[countl_zero(r.rwsSS & occ)].raySS
-			| ray[countl_zero(r.rwsSW & occ)].raySW
-			| ray[countl_zero(r.rwsWW & occ)].rayWW)
+			  ray_share[countr_zero(r.rwsNW & occ)].rayNW
+			| ray_share[countr_zero(r.rwsNN & occ)].rayNN
+			| ray_share[countr_zero(r.rwsNE & occ)].rayNE
+			| ray_share[countr_zero(r.rwsEE & occ)].rayEE
+			| ray_share[countl_zero(r.rwsSE & occ)].raySE
+			| ray_share[countl_zero(r.rwsSS & occ)].raySS
+			| ray_share[countl_zero(r.rwsSW & occ)].raySW
+			| ray_share[countl_zero(r.rwsWW & occ)].rayWW)
 			^ r.queen;
 
 		return bb; // Rook(sq, occ) | Bishop(sq, occ);

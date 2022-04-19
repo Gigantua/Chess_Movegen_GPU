@@ -20,18 +20,15 @@ namespace ObstructionDifference {
         return ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
     }
     template<int dir>
-    static constexpr __device__ uint64_t mask(int square) {
-        int rank = square >> 3;
-        int file = square & 7;
+    static constexpr __inline__ __device__ uint64_t dirMask(int square) {
 
-        if constexpr (dir == 0)
-            return 0xFFull << (square & 56); //HORIZONTAL
-        else if constexpr (dir == 1)
-            return 0x0101010101010101ull << (square & 7); //VERTICAL
-        else if constexpr (dir == 2)
-            return mask_shift<0x8040201008040201ull>(file - rank); //Diagonal
-        else {
-            return mask_shift<0x0102040810204080ull>(7 - file - rank); //Antidiagonal
+        if constexpr (dir == 0) return (0xFFull << (square & 56)) ^ (1ull << square); //HORIZONTAL
+        else if constexpr (dir == 1) return (0x0101010101010101ull << (square & 7)) ^ (1ull << square); //VERTICAL
+        else
+        {
+            int file = square & 7; int rank = square >> 3;
+            if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
+            else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
         }
     }
 
@@ -62,7 +59,7 @@ namespace ObstructionDifference {
 
         template<int dir>
         __device__ void fill(lineEx& line, int sq) {
-            const uint64_t loup = mask<dir>(sq);
+            const uint64_t loup = dirMask<dir>(sq);
             line.lower = init_low(sq, loup);
             line.upper = init_up(sq, loup);
             line.uni = line.lower | line.upper;

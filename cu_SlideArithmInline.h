@@ -10,23 +10,20 @@ namespace SlideArithmInline
 	static constexpr __inline__ __device__ uint64_t mask_shift(int ranks) {
 		return ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
 	}
-
 	
-	template<int dir>
-	static constexpr __inline__ __device__ uint64_t dirMask(int square) {
-		int rank = square >> 3;
-		int file = square & 7;
+    template<int dir>
+    static constexpr __inline__ __device__ uint64_t dirMask(int square) {
 
-		if constexpr (dir == 0)
-			return 0xFFull << (square & 56); //HORIZONTAL
-		else if constexpr (dir == 1)
-			return 0x0101010101010101ull << (square & 7); //VERTICAL
-		else if constexpr (dir == 2)
-			return mask_shift<0x8040201008040201ull>(file - rank); //Diagonal
-		else {
-			return mask_shift<0x0102040810204080ull>(7 - file - rank); //Antidiagonal
-		}
-	}
+        if constexpr (dir == 0) return (0xFFull << (square & 56)) ^ (1ull << square); //HORIZONTAL
+        else if constexpr (dir == 1) return (0x0101010101010101ull << (square & 7)) ^ (1ull << square); //VERTICAL
+        else 
+        {
+            int file = square & 7; int rank = square >> 3;
+            if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
+            else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
+        }
+    }
+
 	constexpr auto Size = 0;
 
 	__inline__ __device__ uint64_t bzhi(uint64_t src, int idx) {
@@ -44,7 +41,7 @@ namespace SlideArithmInline
 
 	/* Start of code */
 	__inline__ __device__
-	static const inline uint64_t slide_arithmetic(uint32_t p, uint64_t block) {
+	static uint64_t slide_arithmetic(uint32_t p, uint64_t block) {
 		//BZHI
 		//[src & (1 << inx) - 1] ;
 		// split the line into upper and lower rays
@@ -59,7 +56,7 @@ namespace SlideArithmInline
 	}
 
 	__inline__ __device__
-	static const inline uint64_t Queen(uint32_t s, uint64_t occ)
+	static uint64_t Queen(uint32_t s, uint64_t occ)
 	{
 		const uint64_t p = 1ull << s;
 		const uint64_t h =  dirMask<0>(s) ^ p;

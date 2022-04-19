@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Movegen">
+      <UniqueIdentifier>{b326e9b2-5938-40ec-b269-24c0f8f6b74d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\cu_TestTensor.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_AVXShift.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Bitrotation.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Bob.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Common.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Dumb7Fill.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_FancyHash.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Hyperbola.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Hypercube.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_KoggeStone.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Leorik.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_NoHeadache.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_GeneticObstructionDiff.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Pext.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_QBB.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_SBAMG.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Sissy.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_SlideArithm.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_SlideArithmInline.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_Switch.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cu_ObstructionDiff.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\kernel.cu" />
+  </ItemGroup>
+</Project>

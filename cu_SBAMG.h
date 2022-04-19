@@ -28,17 +28,15 @@ namespace SBAMG
     }
     template<int dir>
     static constexpr __device__ uint64_t dirMask(int square) {
-        int rank = square >> 3;
-        int file = square & 7;
 
-        if constexpr (dir == 0)
-            return (0xFFull << (square & 56)) ^ (1ull << square); //HORIZONTAL
-        else if constexpr (dir == 1)
-            return (0x0101010101010101ull << (square & 7)) ^ (1ull << square); //VERTICAL
-        else if constexpr (dir == 2)
-            return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
-        else {
-            return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
+        if constexpr (dir == 0) return (0xFFull << (square & 56)) ^ (1ull << square); //HORIZONTAL
+        else if constexpr (dir == 1) return (0x0101010101010101ull << (square & 7)) ^ (1ull << square); //VERTICAL
+        else 
+        {
+            int file = square & 7;
+            int rank = square >> 3;
+            if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
+            else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
         }
     }
 
@@ -68,7 +66,7 @@ namespace SBAMG
 
     static constexpr __device__ uint64_t rank_attacks(int sq, uint64_t occ)
     {
-        const auto rankmask = dirMask<0>(sq);
+        const uint64_t rankmask = dirMask<0>(sq);
         occ = (occ & rankmask) | outersquare(sq);
         return ((occ - ThisAndNextSq(msb(occ & PrevSquares(sq)))) ^ occ)
             & rankmask;
@@ -76,7 +74,7 @@ namespace SBAMG
 
     static constexpr __device__ uint64_t file_attacks(int sq, uint64_t occ)
     {
-        const auto filemask = dirMask<1>(sq);
+        const uint64_t filemask = dirMask<1>(sq);
         occ = (occ & filemask) | outersquare_file(sq);
         return ((occ - ThisAndNextSq(msb(occ & PrevSquares(sq)))) ^ occ)
             & filemask;
@@ -84,7 +82,6 @@ namespace SBAMG
 
     static constexpr __device__ uint64_t byteswap_constexpr(uint64_t b) {
         //Todo: Test for __brevll 
-
         b = ((b >> 8) & 0x00FF00FF00FF00FFULL) | ((b & 0x00FF00FF00FF00FFULL) << 8);
         b = ((b >> 16) & 0x0000FFFF0000FFFFULL) | ((b & 0x0000FFFF0000FFFFULL) << 16);
         return (b >> 32) | (b << 32);

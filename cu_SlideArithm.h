@@ -35,8 +35,7 @@ namespace SlideArithm
 	}
 	static const std::array<uint64_t, 256> host_rank_mask = init_array();
 
-	__constant__ 
-		static const uint64_t rank_mask[256];
+	__constant__ uint64_t rank_mask[256];
 
 	void Init() {
 		gpuErrchk(cudaMemcpyToSymbol(rank_mask, host_rank_mask.data(), sizeof(host_rank_mask)));

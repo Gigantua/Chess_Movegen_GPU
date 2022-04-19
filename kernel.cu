@@ -18,12 +18,14 @@
 #include "cu_Hypercube.h"
 #include "cu_Dumb7Fill.h"
 #include "cu_ObstructionDiff.h"
+#include "cu_GeneticObstructionDiff.h"
 #include "cu_Leorik.h"
 #include "cu_SBAMG.h"
 #include "cu_NoHeadache.h"
 #include "cu_AVXShift.h"
 #include "cu_SlideArithmInline.h"
 #include "cu_Bitrotation.h"
+#include "kernel.h"
 
 /// <summary>
 /// Complete Algorithm Runs on the GPU only
@@ -90,24 +92,35 @@ __device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ, uint32_t& x, uin
         return ObstructionDifference::Queen(sq, occ);
     }
     if constexpr (mode == 12) {
-        return Leorik::Queen(sq, occ);
+        return GeneticObstructionDifference::Queen(sq, occ);
     }
     if constexpr (mode == 13) {
-        return SBAMG::Queen(sq, occ);
+        return Leorik::Queen(sq, occ);
     }
     if constexpr (mode == 14) {
-        return NOHEADACHE::Queen(sq, occ);
+        return SBAMG::Queen(sq, occ);
     }
     if constexpr (mode == 15) {
-        return AVXShift::Queen(sq, occ);
+        return NOHEADACHE::Queen(sq, occ);
     }
     if constexpr (mode == 16) {
-        return SlideArithmInline::Queen(sq, occ);
+        return AVXShift::Queen(sq, occ);
     }
     if constexpr (mode == 17) {
+        return SlideArithmInline::Queen(sq, occ);
+    }
+    if constexpr (mode == 18) {
         return Bitrotation::Queen(sq, occ);
     }
 }
+template<int mode>
+__device__ __inline__ void Prepare(int threadIdx)
+{
+    if constexpr (mode == 2) BobLU::Prepare(threadIdx);
+    if constexpr (mode == 12) GeneticObstructionDifference::Prepare(threadIdx);
+    if constexpr (mode == 18) Bitrotation::Prepare(threadIdx);
+}
+
 const char* AlgoName(int mode) {
     switch (mode)
     {
@@ -123,12 +136,13 @@ const char* AlgoName(int mode) {
         case 9: return  "Hypercube Alg            ";
         case 10: return "Dumb 7 Fill              ";
         case 11: return "Obstruction Difference   ";
-        case 12: return "Leorik                   ";
-        case 13: return "SBAMG o^(o-3cbn)         ";
-        case 14: return "NO HEADACHE              ";
-        case 15: return "AVX Branchless Shift     ";
-        case 16: return "Slide Arithmetic Inline  ";
-        case 17: return "Bitrotation o^(o-2r)     ";
+        case 12: return "Genetic Obstruction Diff ";
+        case 13: return "Leorik                   ";
+        case 14: return "SBAMG o^(o-3cbn)         ";
+        case 15: return "NO HEADACHE              ";
+        case 16: return "AVX Branchless Shift     ";
+        case 17: return "Slide Arithmetic Inline  ";
+        case 18: return "Bitrotation o^(o-2r)     ";
         default:
             return "";
     }
@@ -141,12 +155,14 @@ __global__ void cu_GetQueenAttacks(Cuda_Chessprocessor params)
     uint32_t x = 123456789 * gid, y = 362436069 ^ gid, z = 521288629 + (gid * gid + 1);
 
     volatile uint64_t* occs = params.attacks;
+    uint64_t occMock = 0;
     const int loopcnt = params.loops;
     for (int i = 0; i < loopcnt; i++) {
         uint32_t sq = cu_rand32(x, y, z) & 63;
         uint64_t occ = cu_rand64(x, y, z);
-        occs[gid] ^= Queen<mode>(sq, occ, x, y, z);
+        occMock ^= Queen<mode>(sq, occ, x, y, z);
     }
+    occs[gid] = occMock;
 }
 
 template<int mode>
@@ -202,8 +218,6 @@ int main()
     Hypercube::Init();
     SISSY::Init();
 
-    //Leorik, QBB, ObstructionDiff
-    TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<0>(blocks, threadsperblock);
     TestChessprocessor<1>(blocks, threadsperblock);
     TestChessprocessor<2>(blocks, threadsperblock);
@@ -222,4 +236,5 @@ int main()
     TestChessprocessor<15>(blocks, threadsperblock);
     TestChessprocessor<16>(blocks, threadsperblock);
     TestChessprocessor<17>(blocks, threadsperblock);
+    TestChessprocessor<18>(blocks, threadsperblock);
 }
