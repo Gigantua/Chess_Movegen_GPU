@@ -35,12 +35,21 @@ namespace SlideArithm
 	}
 	static const std::array<uint64_t, 256> host_rank_mask = init_array();
 
-	__constant__ uint64_t rank_mask[256];
+	__constant__ uint64_t rank_mask_const[256];
+	__shared__ uint64_t rank_mask[256];
 
 	void Init() {
 		gpuErrchk(cudaMemcpyToSymbol(rank_mask, host_rank_mask.data(), sizeof(host_rank_mask)));
 	}
 
+	__inline__ __device__ void Prepare(unsigned int threadIdx)
+	{
+		if (threadIdx < 256)
+		{
+			rank_mask[threadIdx] = rank_mask_const[threadIdx];
+		}
+		__syncthreads();
+	}
 
 	__inline__ __device__ uint64_t bzhi(uint64_t src, int idx) {
 		return src & (1 << idx) - 1;

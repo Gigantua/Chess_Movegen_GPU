@@ -26,44 +26,36 @@ namespace Bitrotation {
 	}
 
 	/* Generate attack using the hyperbola quintessence approach */
+	/* ((occ - (1ull << sq)) ^ bit_reverse((bit_reverse(occ) - bit_reverse((1ull << sq))))) */
 	BitFunction attack(uint64_t occ, uint64_t mask, uint64_t s_bit, uint64_t s_rev)
 	{
 		const uint64_t o = (occ & mask);
 		return ((o - s_bit) ^ bitswap(bitswap(o) - s_rev)) & mask;
-		//((occ - (1ull << sq)) ^ bit_reverse((bit_reverse(occ) - bit_reverse((1ull << sq)))))
 	}
 
-	__shared__ uint64_t shr_HO[64];
-	__shared__ uint64_t shr_VE[64];
-	__shared__ uint64_t shr_D1[64];
-	__shared__ uint64_t shr_D2[64];
-	__shared__ uint64_t shr_bit[64];
-	__shared__ uint64_t shr_rev[64];
+	__shared__ uint64_t shr_HO[256];
+	__shared__ uint64_t shr_VE[256];
+	__shared__ uint64_t shr_D1[256];
+	__shared__ uint64_t shr_D2[256];
 
-	BitFunction Queen(const int s, const uint64_t occ) {
+	BitFunction Queen(int s, const uint64_t occ) {
 		const uint64_t s_bit = 1ull << s;
 		const uint64_t s_rev = (1ull << (s ^ 56));
 		
 		return (attack(occ, shr_HO[s], s_bit, s_rev))
-			 ^ (attack(occ, shr_VE[s], s_bit, s_rev))
-			 ^ (attack(occ, shr_D1[s], s_bit, s_rev))
-			 ^ (attack(occ, shr_D2[s], s_bit, s_rev));
+			 | (attack(occ, shr_VE[s], s_bit, s_rev))
+			 | (attack(occ, shr_D1[s], s_bit, s_rev))
+			 | (attack(occ, shr_D2[s], s_bit, s_rev));
 	}
 
 	__inline__ __device__ void Prepare(unsigned int threadIdx)
 	{
-		if (threadIdx < 64)
-		{
-			const uint64_t s_bit = 1ull << threadIdx;
-			const uint64_t s_rev = (1ull << (threadIdx ^ 56));
+		int sq = threadIdx % 64;
+		shr_HO[threadIdx] = dir_HO(sq) ^ (1ull << sq);
+		shr_VE[threadIdx] = dir_VE(sq) ^ (1ull << sq);
+		shr_D1[threadIdx] = dir_D1(sq) ^ (1ull << sq);
+		shr_D2[threadIdx] = dir_D2(sq) ^ (1ull << sq);
 
-			shr_HO[threadIdx] = dir_HO(threadIdx) ^ s_bit;
-			shr_VE[threadIdx] = dir_VE(threadIdx) ^ s_bit;
-			shr_D1[threadIdx] = dir_D1(threadIdx) ^ s_bit;
-			shr_D2[threadIdx] = dir_D2(threadIdx) ^ s_bit;
-			shr_bit[threadIdx] = s_bit;
-			shr_rev[threadIdx] = s_rev;
-		}
 		__syncthreads();
 	}
 

@@ -24,6 +24,7 @@
 #include "cu_NoHeadache.h"
 #include "cu_AVXShift.h"
 #include "cu_SlideArithmInline.h"
+#include "cu_Genetic8Ray.h"
 #include "cu_Bitrotation.h"
 #include "kernel.h"
 
@@ -39,10 +40,6 @@ struct Cuda_Chessprocessor
     //Output of iterations each thread did perform
     Cuda_Chessprocessor(long threads) : threads(threads)
     {
-        gpuErrchk(cudaSetDevice(0));
-        gpuErrchk(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
-        gpuErrchk(cudaDeviceSynchronize());
-
         gpuErrchk(cudaMalloc(&attacks, threads * sizeof(uint64_t)));
         //gpuErrchk(cudaHostAlloc(&attacks, threads * sizeof(uint64_t), cudaHostAllocMapped));
     }
@@ -54,7 +51,7 @@ struct Cuda_Chessprocessor
 };
 
 template<int mode>
-__device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ, uint32_t& x, uint32_t& y, uint32_t& z) {
+__device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ) {
     if constexpr (mode == 0) {
         return FancyHash::Queen(sq, occ);
     }
@@ -110,6 +107,9 @@ __device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ, uint32_t& x, uin
         return SlideArithmInline::Queen(sq, occ);
     }
     if constexpr (mode == 18) {
+        return Genetic8Ray::Queen(sq, occ);
+    }
+    if constexpr (mode == 19) {
         return Bitrotation::Queen(sq, occ);
     }
 }
@@ -117,8 +117,10 @@ template<int mode>
 __device__ __inline__ void Prepare(int threadIdx)
 {
     if constexpr (mode == 2) BobLU::Prepare(threadIdx);
+    if constexpr (mode == 6) SlideArithm::Prepare(threadIdx);
     if constexpr (mode == 12) GeneticObstructionDifference::Prepare(threadIdx);
-    if constexpr (mode == 18) Bitrotation::Prepare(threadIdx);
+    if constexpr (mode == 18) Genetic8Ray::Prepare(threadIdx);
+    if constexpr (mode == 19) Bitrotation::Prepare(threadIdx);
 }
 
 const char* AlgoName(int mode) {
@@ -133,7 +135,7 @@ const char* AlgoName(int mode) {
         case 6: return  "Slide Arithm             ";
         case 7: return  "Pext Lookup              ";
         case 8: return  "SISSY Lookup             ";
-        case 9: return  "Hypercube Alg            ";
+        case 9: return  "Hypercube Algorithm      ";
         case 10: return "Dumb 7 Fill              ";
         case 11: return "Obstruction Difference   ";
         case 12: return "Genetic Obstruction Diff ";
@@ -142,7 +144,8 @@ const char* AlgoName(int mode) {
         case 15: return "NO HEADACHE              ";
         case 16: return "AVX Branchless Shift     ";
         case 17: return "Slide Arithmetic Inline  ";
-        case 18: return "Bitrotation o^(o-2r)     ";
+        case 18: return "C++ Tree Sifter - 8 Rays ";
+        case 19: return "Bitrotation o^(o-2r)     ";
         default:
             return "";
     }
@@ -153,17 +156,17 @@ __global__ void cu_GetQueenAttacks(Cuda_Chessprocessor params)
 {
     const int gid = getIdx();
     uint32_t x = 123456789 * gid, y = 362436069 ^ gid, z = 521288629 + (gid * gid + 1);
-
     volatile uint64_t* occs = params.attacks;
     uint64_t occMock = 0;
     const int loopcnt = params.loops;
     for (int i = 0; i < loopcnt; i++) {
         uint32_t sq = cu_rand32(x, y, z) & 63;
         uint64_t occ = cu_rand64(x, y, z);
-        occMock ^= Queen<mode>(sq, occ, x, y, z);
+        occMock ^= Queen<mode>(sq, occ);
     }
     occs[gid] = occMock;
 }
+
 
 template<int mode>
 void TestChessprocessor(int blocks, int threadsperblock) {
@@ -173,43 +176,70 @@ void TestChessprocessor(int blocks, int threadsperblock) {
     std::vector<double> avg;
     std::cout << std::fixed << std::setprecision(2);
     std::cout << AlgoName(mode) << ":\t";
-    for (int i = 0; i < 12; i++) {
-        auto t1 = std::chrono::high_resolution_clock::now();
-        cu_GetQueenAttacks<mode><<<blocks, threadsperblock >>>(p);
 
-        auto err = cudaGetLastError();
-        if (err != cudaSuccess)
-        {
-            printf(cudaGetErrorString(err));
-            exit(11);
-        }
-        gpuErrchk(cudaDeviceSynchronize());
-        auto t2 = std::chrono::high_resolution_clock::now();
-
-        //verification of buffer on the cpu side. 
-        //cudaMemcpy(results, p.attacks, lookups * 8, cudaMemcpyKind::cudaMemcpyDeviceToHost);
-
-        double GLU = p.LookupCount() * 1.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-        avg.push_back(GLU);
-        //std::cout << "\t" << MLU << "\n";
+    
+    //Serial on Stream 0: 82GLU
+    //Cuda Graph: 88GLU
+    //Cuda Streams: 88GLU
+    //Cuda settings optimisation: 
+    constexpr int streamcount = 4;
+    cudaStream_t streams[streamcount];
+    for (int i = 0; i < streamcount; i++)
+    {
+        gpuErrchk(cudaStreamCreate(streams + i));
     }
+    auto t1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 16; i++) 
+    {
+        cu_GetQueenAttacks<mode><<<blocks, threadsperblock,0, streams[i % streamcount]>>>(p);
+        cudaVerifyLaunch();
+    }
+    for (int i = 0; i < streamcount; i++)
+    {
+        gpuErrchk(cudaStreamSynchronize(streams[i]));
+    }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < streamcount; i++)
+    {
+        gpuErrchk(cudaStreamDestroy(streams[i]));
+    }
+    double GLU = p.LookupCount() * 16.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
+    avg.push_back(GLU);
     //Erase outliers
-    avg.erase(std::max_element(avg.begin(), avg.end()));
-    avg.erase(std::min_element(avg.begin(), avg.end()));
+    //avg.erase(std::max_element(avg.begin(), avg.end()));
+    //avg.erase(std::min_element(avg.begin(), avg.end()));
 
-    double MegaLookups = accumulate(avg.begin(), avg.end(), 0.0) / avg.size();
-    std::cout << MegaLookups << " GigaQueens/s\n";
+    double GigaLookups = accumulate(avg.begin(), avg.end(), 0.0) / avg.size();
+    std::cout << GigaLookups << " GigaQueens/s\n";
+
+    gpuErrchk(cudaFree(p.attacks));
     delete[] results;
+
+}
+
+void SetupDevice()
+{
+    gpuErrchk(cudaSetDevice(0));
+    gpuErrchk(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync));
+    cudaDeviceProp prop;
+    gpuErrchk(cudaGetDeviceProperties(&prop, 0));
+    gpuErrchk(cudaDeviceSetSharedMemConfig(cudaSharedMemConfig::cudaSharedMemBankSizeEightByte));
+    gpuErrchk(cudaDeviceSynchronize());
+    std::cout << prop.name << "\n";
 }
 
 int main()
 {
+    SetupDevice();
     constexpr int blocks = 4096;
     constexpr int threadsperblock = 256;
     //TestCoprocessor(blocks, threadsperblock);
-    cudaDeviceProp prop;
-    gpuErrchk(cudaGetDeviceProperties(&prop, 0));
-    std::cout << prop.name << "\n"; 
+    //while (true) {
+    //
+    //    TestChessprocessor<19>(blocks, threadsperblock);
+    //    return 0;
+    //}
+    //return;
 
     BobLU::Init();
     HyperbolaQsc::Init();
@@ -227,7 +257,7 @@ int main()
     TestChessprocessor<6>(blocks, threadsperblock);
     TestChessprocessor<7>(blocks, threadsperblock);
     TestChessprocessor<8>(blocks, threadsperblock);
-    TestChessprocessor<9>(blocks, threadsperblock);
+    //TestChessprocessor<9>(blocks, threadsperblock);
     TestChessprocessor<10>(blocks, threadsperblock);
     TestChessprocessor<11>(blocks, threadsperblock);
     TestChessprocessor<12>(blocks, threadsperblock);
@@ -237,4 +267,5 @@ int main()
     TestChessprocessor<16>(blocks, threadsperblock);
     TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<18>(blocks, threadsperblock);
+    TestChessprocessor<19>(blocks, threadsperblock);
 }

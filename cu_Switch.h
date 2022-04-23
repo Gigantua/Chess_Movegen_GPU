@@ -1856,7 +1856,11 @@ namespace SwitchLookup {
 	}
 
 	__device__ uint64_t Queen(uint32_t square, uint64_t occupy) {
-		return Rook(square, occupy) | Bishop(square, occupy);
+		uint64_t rook = Rook(square, occupy);
+		//__syncthreads();
+		uint64_t bishop = Bishop(square, occupy);
+		//__syncthreads();
+		return rook | bishop;
 	}
 
 	__device__ uint64_t Queen_Xray(uint64_t square, uint64_t occupy) {
