@@ -177,11 +177,12 @@ void TestChessprocessor(int blocks, int threadsperblock) {
     std::cout << std::fixed << std::setprecision(2);
     std::cout << AlgoName(mode) << ":\t";
 
-    
-    //Serial on Stream 0: 82GLU
+    //Default (sm52) default stream: 82GLU
     //Cuda Graph: 88GLU
     //Cuda Streams: 88GLU
-    //Cuda settings optimisation: 
+    //Cuda compile settings optimisation: 114GLU
+    //Optimize algorithm. New world record: 123 Billion Lookups/S for queens. RTX 3080 23.04.2022
+
     constexpr int streamcount = 4;
     cudaStream_t streams[streamcount];
     for (int i = 0; i < streamcount; i++)
@@ -268,4 +269,6 @@ int main()
     TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<18>(blocks, threadsperblock);
     TestChessprocessor<19>(blocks, threadsperblock);
+    std::cout << "Done! Press any key to exit.";
+    getchar();
 }

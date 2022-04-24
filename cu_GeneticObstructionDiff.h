@@ -35,23 +35,24 @@ namespace GeneticObstructionDifference {
         return ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
     }
 
-    __shared__ uint64_t shr_HO[64];
-    __shared__ uint64_t shr_VE[64];
-    __shared__ uint64_t shr_D1[64];
-    __shared__ uint64_t shr_D2[64];
-    __shared__ uint64_t shr_LO[64];
+    struct RayMask 
+    {
+        uint64_t HO, VE, D1, D2, LO, UP;
+    };
 
+    __shared__ RayMask shr[64];
     __inline__ __device__ void Prepare(unsigned int threadIdx)
     {
         if (threadIdx < 64)
         {
-            const uint64_t s_bit = 1ull << threadIdx;
-
-            shr_HO[threadIdx] = dir_HO(threadIdx) ^ s_bit;
-            shr_VE[threadIdx] = dir_VE(threadIdx) ^ s_bit;
-            shr_D1[threadIdx] = dir_D1(threadIdx) ^ s_bit;
-            shr_D2[threadIdx] = dir_D2(threadIdx) ^ s_bit;
-            shr_LO[threadIdx] = s_bit - 1;
+            shr[threadIdx] = {
+                dir_HO(threadIdx),
+                dir_VE(threadIdx),
+                dir_D1(threadIdx),
+                dir_D2(threadIdx),
+                (1ull << threadIdx) - 1,
+                (0xFFFFFFFFFFFFFFFE << threadIdx)
+            };
         }
         __syncthreads();
     }
@@ -64,29 +65,25 @@ namespace GeneticObstructionDifference {
 
     BitFunction Bishop(int sq, uint64_t occ)
     {
-        const uint64_t lower = occ &  shr_LO[sq];
-        const uint64_t upper = occ & ~shr_LO[sq];
-        const uint64_t ho = shr_HO[sq];
-        const uint64_t ve = shr_VE[sq];
-
-        return line_attack(ho & lower, ho & upper, ho) |
-               line_attack(ve & lower, ve & upper, ve);
+        const auto& r = shr[sq];
+        return line_attack(r.HO & occ & r.LO, r.HO & occ & r.UP, r.HO) |
+               line_attack(r.VE & occ & r.LO, r.VE & occ & r.UP, r.VE);
     }
 
     BitFunction Rook(int sq, uint64_t occ)
     {
-        const uint64_t lower = occ &  shr_LO[sq];
-        const uint64_t upper = occ & ~shr_LO[sq];
-        const uint64_t ho = shr_D1[sq];
-        const uint64_t ve = shr_D2[sq];
-
-        return line_attack(ho & lower, ho & upper, ho) |
-               line_attack(ve & lower, ve & upper, ve);
+        const auto& r = shr[sq];
+        return line_attack(r.D1 & occ & r.LO, r.D1 & occ & r.UP, r.D1) |
+               line_attack(r.D2 & occ & r.LO, r.D2 & occ & r.UP, r.D2);
     }
 
     BitFunction Queen(int sq, uint64_t occ)
     {
-        return Bishop(sq, occ) | Rook(sq, occ);
+        const auto& r = shr[sq];
+        return line_attack(r.HO & occ & r.LO, r.HO & occ & r.UP, r.HO) |
+               line_attack(r.VE & occ & r.LO, r.VE & occ & r.UP, r.VE) |
+               line_attack(r.D1 & occ & r.LO, r.D1 & occ & r.UP, r.D1) |
+               line_attack(r.D1 & occ & r.LO, r.D1 & occ & r.UP, r.D2);
     }
 
 #undef BitFunction

@@ -33,29 +33,37 @@ namespace Bitrotation {
 		return ((o - s_bit) ^ bitswap(bitswap(o) - s_rev)) & mask;
 	}
 
-	__shared__ uint64_t shr_HO[256];
-	__shared__ uint64_t shr_VE[256];
-	__shared__ uint64_t shr_D1[256];
-	__shared__ uint64_t shr_D2[256];
+	struct RayMask {
+		uint64_t HO, VE, D1, D2;
+	};
+
+	__shared__ RayMask shr[64];
+	//__shared__ uint64_t shr_HO[64];
+	//__shared__ uint64_t shr_VE[64];
+	//__shared__ uint64_t shr_D1[64];
+	//__shared__ uint64_t shr_D2[64];
 
 	BitFunction Queen(int s, const uint64_t occ) {
 		const uint64_t s_bit = 1ull << s;
 		const uint64_t s_rev = (1ull << (s ^ 56));
-		
-		return (attack(occ, shr_HO[s], s_bit, s_rev))
-			 | (attack(occ, shr_VE[s], s_bit, s_rev))
-			 | (attack(occ, shr_D1[s], s_bit, s_rev))
-			 | (attack(occ, shr_D2[s], s_bit, s_rev));
+		const auto& r = shr[s];
+		return (attack(occ, r.HO, s_bit, s_rev))
+			 | (attack(occ, r.VE, s_bit, s_rev))
+			 | (attack(occ, r.D1, s_bit, s_rev))
+			 | (attack(occ, r.D2, s_bit, s_rev));
 	}
 
 	__inline__ __device__ void Prepare(unsigned int threadIdx)
 	{
-		int sq = threadIdx % 64;
-		shr_HO[threadIdx] = dir_HO(sq) ^ (1ull << sq);
-		shr_VE[threadIdx] = dir_VE(sq) ^ (1ull << sq);
-		shr_D1[threadIdx] = dir_D1(sq) ^ (1ull << sq);
-		shr_D2[threadIdx] = dir_D2(sq) ^ (1ull << sq);
-
+		if (threadIdx < 64) 
+		{
+			shr[threadIdx] = {
+				dir_HO(threadIdx) ^ (1ull << threadIdx),
+				dir_VE(threadIdx) ^ (1ull << threadIdx),
+				dir_D1(threadIdx) ^ (1ull << threadIdx),
+				dir_D2(threadIdx) ^ (1ull << threadIdx)
+			};
+		}
 		__syncthreads();
 	}
 

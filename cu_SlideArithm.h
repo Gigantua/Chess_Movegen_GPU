@@ -39,7 +39,7 @@ namespace SlideArithm
 	__shared__ uint64_t rank_mask[256];
 
 	void Init() {
-		gpuErrchk(cudaMemcpyToSymbol(rank_mask, host_rank_mask.data(), sizeof(host_rank_mask)));
+		gpuErrchk(cudaMemcpyToSymbol(rank_mask_const, host_rank_mask.data(), sizeof(host_rank_mask)));
 	}
 
 	__inline__ __device__ void Prepare(unsigned int threadIdx)

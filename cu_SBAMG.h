@@ -20,24 +20,16 @@
 #include <array>
 #include "cu_Common.h"
 
+#	define BitFunction __inline__ __device__ uint64_t
+#	define dir_HO(X) (0xFFull << (X & 56))
+#	define dir_VE(X) (0x0101010101010101ull << (X & 7))
+#	define dir_D1(X) (mask_shift<0x8040201008040201ull>(    (X & 7) - (X >> 3)))
+#	define dir_D2(X) (mask_shift<0x0102040810204080ull>(7 - (X & 7) - (X >> 3)))
 namespace SBAMG
 {
     template<uint64_t bb>
-    static constexpr __device__ uint64_t mask_shift(int ranks) {
+    constexpr BitFunction mask_shift(int ranks) {
         return ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
-    }
-    template<int dir>
-    static constexpr __device__ uint64_t dirMask(int square) {
-
-        if constexpr (dir == 0) return (0xFFull << (square & 56)) ^ (1ull << square); //HORIZONTAL
-        else if constexpr (dir == 1) return (0x0101010101010101ull << (square & 7)) ^ (1ull << square); //VERTICAL
-        else 
-        {
-            int file = square & 7;
-            int rank = square >> 3;
-            if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
-            else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
-        }
     }
 
     static constexpr __device__ uint64_t outersquare(int square) {
@@ -58,15 +50,15 @@ namespace SBAMG
     };
 
 
-    static __device__ uint64_t msb(uint64_t value)
+    static __device__ int msb(uint64_t value)
     {
-        return 63ull - __clzll(value);
+        return 63 - __clzll(value);
     }
 
 
     static constexpr __device__ uint64_t rank_attacks(int sq, uint64_t occ)
     {
-        const uint64_t rankmask = dirMask<0>(sq);
+        const uint64_t rankmask = dir_HO(sq);
         occ = (occ & rankmask) | outersquare(sq);
         return ((occ - ThisAndNextSq(msb(occ & PrevSquares(sq)))) ^ occ)
             & rankmask;
@@ -74,7 +66,7 @@ namespace SBAMG
 
     static constexpr __device__ uint64_t file_attacks(int sq, uint64_t occ)
     {
-        const uint64_t filemask = dirMask<1>(sq);
+        const uint64_t filemask = dir_VE(sq);
         occ = (occ & filemask) | outersquare_file(sq);
         return ((occ - ThisAndNextSq(msb(occ & PrevSquares(sq)))) ^ occ)
             & filemask;
@@ -94,7 +86,7 @@ namespace SBAMG
     // NORMAL VERSION
     static constexpr __device__ uint64_t diag_attacks(int sq, uint64_t occ)
     {
-        const auto diagmask = dirMask<2>(sq);
+        const auto diagmask = dir_D1(sq);
         occ &= diagmask;
         return ((occ - (1ull << sq)) ^ byteswap(byteswap(occ) - (1ull << (sq ^ 56))))
             & diagmask;
@@ -102,7 +94,7 @@ namespace SBAMG
 
     static constexpr __device__ uint64_t adiag_attacks(int sq, uint64_t occ)
     {
-        const auto adiagmask = dirMask<3>(sq);
+        const auto adiagmask = dir_D2(sq);
         occ &= adiagmask;
         return ((occ - (1ull << sq)) ^ byteswap(byteswap(occ) - (1ull << (sq ^ 56))))
             & adiagmask;
@@ -123,3 +115,8 @@ namespace SBAMG
         return Bishop(sq, occ) | Rook(sq, occ);
     }
 }
+#undef BitFunction
+#undef dir_HO
+#undef dir_VE
+#undef dir_D1
+#undef dir_D2
