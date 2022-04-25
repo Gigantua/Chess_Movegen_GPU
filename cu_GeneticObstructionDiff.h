@@ -46,10 +46,10 @@ namespace GeneticObstructionDifference {
         if (threadIdx < 64)
         {
             shr[threadIdx] = {
-                dir_HO(threadIdx),
-                dir_VE(threadIdx),
-                dir_D1(threadIdx),
-                dir_D2(threadIdx),
+                dir_HO(threadIdx) ^ (1ull << sq),
+                dir_VE(threadIdx) ^ (1ull << sq),
+                dir_D1(threadIdx) ^ (1ull << sq),
+                dir_D2(threadIdx) ^ (1ull << sq),
                 (1ull << threadIdx) - 1,
                 (0xFFFFFFFFFFFFFFFE << threadIdx)
             };
@@ -83,7 +83,7 @@ namespace GeneticObstructionDifference {
         return line_attack(r.HO & occ & r.LO, r.HO & occ & r.UP, r.HO) |
                line_attack(r.VE & occ & r.LO, r.VE & occ & r.UP, r.VE) |
                line_attack(r.D1 & occ & r.LO, r.D1 & occ & r.UP, r.D1) |
-               line_attack(r.D1 & occ & r.LO, r.D1 & occ & r.UP, r.D2);
+               line_attack(r.D2 & occ & r.LO, r.D2 & occ & r.UP, r.D2);
     }
 
 #undef BitFunction
