@@ -46,10 +46,10 @@ namespace GeneticObstructionDifference {
         if (threadIdx < 64)
         {
             shr[threadIdx] = {
-                dir_HO(threadIdx) ^ (1ull << sq),
-                dir_VE(threadIdx) ^ (1ull << sq),
-                dir_D1(threadIdx) ^ (1ull << sq),
-                dir_D2(threadIdx) ^ (1ull << sq),
+                dir_HO(threadIdx) ^ (1ull << threadIdx),
+                dir_VE(threadIdx) ^ (1ull << threadIdx),
+                dir_D1(threadIdx) ^ (1ull << threadIdx),
+                dir_D2(threadIdx) ^ (1ull << threadIdx),
                 (1ull << threadIdx) - 1,
                 (0xFFFFFFFFFFFFFFFE << threadIdx)
             };
