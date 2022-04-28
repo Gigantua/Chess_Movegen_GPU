@@ -269,5 +269,4 @@ int main()
     TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<18>(blocks, threadsperblock);
     TestChessprocessor<19>(blocks, threadsperblock);
-    getchar();
 }

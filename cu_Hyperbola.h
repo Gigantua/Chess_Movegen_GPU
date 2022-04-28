@@ -19,7 +19,7 @@ namespace HyperbolaQsc {
 	};
 
 	/* Constexpr Init Function */
-	static constexpr std::array<Mask, 64> InitMask() {
+	constexpr std::array<Mask, 64> InitMask() {
 		int r{}, f{}, i{}, j{}, y{};
 		int d[64]{};
 
@@ -52,7 +52,7 @@ namespace HyperbolaQsc {
 		}
 		return MASK;
 	}
-	static constexpr std::array<uint8_t, 512> InitRank() {
+	constexpr std::array<uint8_t, 512> InitRank() {
 
 		std::array<uint8_t, 512> rank_attack{};
 
