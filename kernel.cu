@@ -242,12 +242,12 @@ int main()
     //    return 0;
     //}
     //return;
-    TestChessprocessor<0>(blocks, threadsperblock);
 
     FancyHash::Init();
     Pext::Init();
     Hypercube::Init();
     SISSY::Init();
+    gpuErrchk(cudaDeviceSynchronize());
 
     TestChessprocessor<0>(blocks, threadsperblock);
     TestChessprocessor<1>(blocks, threadsperblock);
