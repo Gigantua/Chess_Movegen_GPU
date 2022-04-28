@@ -874,8 +874,8 @@ namespace FancyHash {
     };
 
     //Replace CuHash with ConstHash32 to enable 32 bit optimisation
-    __constant__ CuHash cu_rook[64];
-    __constant__ CuHash cu_bish[64];
+    __device__ CuHash cu_rook[64];
+    __device__ CuHash cu_bish[64];
 
 
     void Init() {
@@ -894,7 +894,6 @@ namespace FancyHash {
             lbish[i].hash = b_magics[i].hash;
             lbish[i].mask = b_magics[i].mask;
         }
-
         gpuErrchk(cudaMemcpyToSymbol(cu_rook, lrook, sizeof(lrook)));
         gpuErrchk(cudaMemcpyToSymbol(cu_bish, lbish, sizeof(lbish)));
     }

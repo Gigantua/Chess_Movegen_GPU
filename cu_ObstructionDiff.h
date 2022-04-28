@@ -30,6 +30,7 @@ namespace ObstructionDifference {
             if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
             else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
         }
+        return 0;
     }
 
     struct lineEx {
@@ -66,6 +67,9 @@ namespace ObstructionDifference {
         }
     };
 
+    __inline__ __device__ uint64_t countl_zero(uint64_t x) {
+        return __clzll(x);
+    }
 
 #pragma warning(push)
 #pragma warning(disable: 4146)
@@ -81,10 +85,6 @@ namespace ObstructionDifference {
         uint64_t lsb = upper & -upper;                                  //Extract Lowest Set Isolated Bit
         uint64_t oDif = lsb * 2 - msb;
         return line.uni & oDif;
-    }
-
-    __inline__ __device__ uint64_t countl_zero(uint64_t x) {
-        return __clzll(x);
     }
 
 #pragma warning(pop)

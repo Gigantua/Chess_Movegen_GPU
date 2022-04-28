@@ -28,7 +28,7 @@ void cudaVerifyLaunch() {
     auto err = cudaGetLastError();
     if (err != cudaSuccess)
     {
-        printf(cudaGetErrorString(err));
+        printf("%s", cudaGetErrorString(err));
         exit(11);
     }
 }

@@ -18,9 +18,7 @@ namespace HyperbolaQsc {
 		uint64_t vertical;
 	};
 
-
-
-	/* Init */
+	/* Constexpr Init Function */
 	static constexpr std::array<Mask, 64> InitMask() {
 		int r{}, f{}, i{}, j{}, y{};
 		int d[64]{};
@@ -80,15 +78,24 @@ namespace HyperbolaQsc {
 		}
 		return rank_attack;
 	}
-	static const std::array<Mask, 64> init_mask = InitMask();
-	static const std::array<uint8_t, 512> init_rank_attack = InitRank();
 
-	__constant__ Mask mask[64];
-	__constant__ uint8_t rank_attack[512];
+	__shared__ Mask mask[64];
+	__shared__ uint8_t rank_attack[512];
 
-	void Init() {
-		gpuErrchk(cudaMemcpyToSymbol(mask, init_mask.data(), sizeof(init_mask)));
-		gpuErrchk(cudaMemcpyToSymbol(rank_attack, init_rank_attack.data(), sizeof(init_rank_attack)));
+	__inline__ __device__ void Prepare(unsigned int threadIdx)
+	{
+		if (threadIdx < 64)
+		{
+			mask[threadIdx] = InitMask()[threadIdx];
+		}
+		__syncthreads();
+		if (threadIdx == 0)
+		{
+			for (int i = 0; i < 512; i++) {
+				rank_attack[i] = InitRank()[i];
+			}
+		}
+		__syncthreads();
 	}
 
 	__device__ uint64_t cu_bswap(uint64_t b) {

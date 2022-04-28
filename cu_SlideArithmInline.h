@@ -22,6 +22,7 @@ namespace SlideArithmInline
             if constexpr (dir == 2) return (mask_shift<0x8040201008040201ull>(file - rank)) ^ (1ull << square); //Diagonal
             else return (mask_shift<0x0102040810204080ull>(7 - file - rank)) ^ (1ull << square); //Antidiagonal
         }
+		return 0;
     }
 
 	constexpr auto Size = 0;

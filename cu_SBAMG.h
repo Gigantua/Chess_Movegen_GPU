@@ -32,31 +32,31 @@ namespace SBAMG
         return ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
     }
 
-    static constexpr __device__ uint64_t outersquare(int square) {
+    __device__ uint64_t outersquare(int square) {
         return (0x81ull << (square & 56)) & ~(1ull << square) | (square == 0); //Probably can be optimised - 2ull << (square >> 1) === (1ull << (square)) - (square == 0)
     }
 
-    static constexpr __device__ uint64_t outersquare_file(int square) {
+    __device__ uint64_t outersquare_file(int square) {
         return (0x0100000000000001ULL << (square & 7)) & ~(1ull << square); //VERTICAL
     }
 
-    static constexpr __device__ uint64_t ThisAndNextSq(int sq)
+    __device__ uint64_t ThisAndNextSq(int sq)
     {
         return 3ULL << sq;
     };
-    static constexpr __device__ uint64_t PrevSquares(int sq)
+    __device__ uint64_t PrevSquares(int sq)
     {
         return ((1ULL << sq) - 1) | (sq == 0);
     };
 
 
-    static __device__ int msb(uint64_t value)
+    __device__ int msb(uint64_t value)
     {
         return 63 - __clzll(value);
     }
 
 
-    static constexpr __device__ uint64_t rank_attacks(int sq, uint64_t occ)
+    __device__ uint64_t rank_attacks(int sq, uint64_t occ)
     {
         const uint64_t rankmask = dir_HO(sq);
         occ = (occ & rankmask) | outersquare(sq);
@@ -64,7 +64,7 @@ namespace SBAMG
             & rankmask;
     }
 
-    static constexpr __device__ uint64_t file_attacks(int sq, uint64_t occ)
+    __device__ uint64_t file_attacks(int sq, uint64_t occ)
     {
         const uint64_t filemask = dir_VE(sq);
         occ = (occ & filemask) | outersquare_file(sq);
@@ -72,19 +72,19 @@ namespace SBAMG
             & filemask;
     }
 
-    static constexpr __device__ uint64_t byteswap_constexpr(uint64_t b) {
+    __device__ uint64_t byteswap_constexpr(uint64_t b) {
         //Todo: Test for __brevll 
         b = ((b >> 8) & 0x00FF00FF00FF00FFULL) | ((b & 0x00FF00FF00FF00FFULL) << 8);
         b = ((b >> 16) & 0x0000FFFF0000FFFFULL) | ((b & 0x0000FFFF0000FFFFULL) << 16);
         return (b >> 32) | (b << 32);
     }
 
-    static constexpr __device__ uint64_t byteswap(uint64_t b) {
+    __device__ uint64_t byteswap(uint64_t b) {
         return byteswap_constexpr(b);
     }
 
     // NORMAL VERSION
-    static constexpr __device__ uint64_t diag_attacks(int sq, uint64_t occ)
+    __device__ uint64_t diag_attacks(int sq, uint64_t occ)
     {
         const auto diagmask = dir_D1(sq);
         occ &= diagmask;
@@ -92,7 +92,7 @@ namespace SBAMG
             & diagmask;
     }
 
-    static constexpr __device__ uint64_t adiag_attacks(int sq, uint64_t occ)
+    __device__ uint64_t adiag_attacks(int sq, uint64_t occ)
     {
         const auto adiagmask = dir_D2(sq);
         occ &= adiagmask;
@@ -100,17 +100,17 @@ namespace SBAMG
             & adiagmask;
     }
 
-    static constexpr __device__ uint64_t Bishop(int sq, uint64_t occ)
+    __device__ uint64_t Bishop(int sq, uint64_t occ)
     {
         return diag_attacks(sq, occ) | adiag_attacks(sq, occ);
     }
 
-    static constexpr __device__ uint64_t Rook(int sq, uint64_t occ)
+    __device__ uint64_t Rook(int sq, uint64_t occ)
     {
         return file_attacks(sq, occ) | rank_attacks(sq, occ);
     }
 
-    static constexpr __device__ uint64_t Queen(int sq, uint64_t occ)
+    __device__ uint64_t Queen(int sq, uint64_t occ)
     {
         return Bishop(sq, occ) | Rook(sq, occ);
     }

@@ -98,19 +98,13 @@ namespace BobLU {
 		}
 		return ray;
 	}
-	const std::array<Rays, 64> ray_src = Initialize();
-	__constant__ Rays ray_const[64];
-	__shared__   Rays ray_share[64];
-
-	void Init() {
-		gpuErrchk(cudaMemcpyToSymbol(ray_const, ray_src.data(), sizeof(ray_src)));
-	}
+	__shared__ Rays ray_share[64];
 
 	__inline__ __device__ void Prepare(int threadIdx)
 	{
 		if (threadIdx < 64)
 		{
-			ray_share[threadIdx] = ray_const[threadIdx];
+			ray_share[threadIdx] = Initialize()[threadIdx];
 		}
 		__syncthreads();
 	}

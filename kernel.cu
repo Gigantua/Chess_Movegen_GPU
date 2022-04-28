@@ -117,6 +117,7 @@ template<int mode>
 __device__ __inline__ void Prepare(int threadIdx)
 {
     if constexpr (mode == 2) BobLU::Prepare(threadIdx);
+    if constexpr (mode == 4) HyperbolaQsc::Prepare(threadIdx);
     if constexpr (mode == 6) SlideArithm::Prepare(threadIdx);
     if constexpr (mode == 12) GeneticObstructionDifference::Prepare(threadIdx);
     if constexpr (mode == 18) Genetic8Ray::Prepare(threadIdx);
@@ -241,9 +242,8 @@ int main()
     //    return 0;
     //}
     //return;
+    TestChessprocessor<0>(blocks, threadsperblock);
 
-    BobLU::Init();
-    HyperbolaQsc::Init();
     FancyHash::Init();
     Pext::Init();
     Hypercube::Init();
