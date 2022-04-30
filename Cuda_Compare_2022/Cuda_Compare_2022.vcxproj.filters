@@ -72,6 +72,9 @@
     <ClInclude Include="..\cu_Genetic8Ray.h">
       <Filter>Movegen</Filter>
     </ClInclude>
+    <ClInclude Include="..\cu_FoldingHash.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\kernel.cu" />

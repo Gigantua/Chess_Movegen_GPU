@@ -20,29 +20,25 @@ namespace Bitrotation {
 #	define dir_D2(X) (mask_shift<0x0102040810204080ull>(7 - (X & 7) - (X >> 3)))
 #	define bitswap(X) __brevll(X)
 
-	constexpr std::array<uint8_t, 512> InitRank() {
-		std::array<uint8_t, 512> rank_attack { };
-		for (int x = 0; x < 64; ++x) {
-			for (int f = 0; f < 8; ++f) {
-				int o = 2 * x;
-				int x2{}, y2{};
-				int b{};
+	__inline__ __device__ uint8_t InitRank(int sq) {
+		int x = sq / 8;
+		int f = sq % 8;
+		int o = 2 * x;
+		int x2{}, y2{};
+		int b{};
 
-				y2 = 0;
-				for (x2 = f - 1; x2 >= 0; --x2) {
-					b = 1 << x2;
-					y2 |= b;
-					if ((o & b) == b) break;
-				}
-				for (x2 = f + 1; x2 < 8; ++x2) {
-					b = 1 << x2;
-					y2 |= b;
-					if ((o & b) == b) break;
-				}
-				rank_attack[x * 8ull + f] = y2;
-			}
+		y2 = 0;
+		for (x2 = f - 1; x2 >= 0; --x2) {
+			b = 1 << x2;
+			y2 |= b;
+			if ((o & b) == b) break;
 		}
-		return rank_attack;
+		for (x2 = f + 1; x2 < 8; ++x2) {
+			b = 1 << x2;
+			y2 |= b;
+			if ((o & b) == b) break;
+		}
+		return y2;
 	}
 
 	template<uint64_t bb>
@@ -54,6 +50,8 @@ namespace Bitrotation {
 	struct RayMask {
 		uint64_t VE, D1, D2;
 	};
+
+
 
 	__shared__ RayMask shr[64];
 	__shared__ uint8_t rank_attack[512];
@@ -95,7 +93,7 @@ namespace Bitrotation {
 			for (int i = 0; i < 8; i++)
 			{
 				int idx = 8 * threadIdx + i;
-				rank_attack[idx] = InitRank()[idx];
+				rank_attack[idx] = InitRank(idx);
 			}
 		}
 		__syncthreads();

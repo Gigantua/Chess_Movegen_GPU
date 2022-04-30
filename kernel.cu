@@ -5,6 +5,7 @@
 #include <iostream>
 #include <random>
 #include <chrono>
+#include <numeric>
 #include <iomanip>
 #include "cu_Bob.h"
 #include "cu_FancyHash.h"
@@ -26,6 +27,7 @@
 #include "cu_SlideArithmInline.h"
 #include "cu_Genetic8Ray.h"
 #include "cu_Bitrotation.h"
+#include "cu_foldingHash.h"
 #include "kernel.h"
 
 /// <summary>
@@ -41,10 +43,10 @@ struct Cuda_Chessprocessor
     Cuda_Chessprocessor(long threads) : threads(threads)
     {
         gpuErrchk(cudaMalloc(&attacks, threads * sizeof(uint64_t)));
-        //gpuErrchk(cudaHostAlloc(&attacks, threads * sizeof(uint64_t), cudaHostAllocMapped));
+        gpuErrchk(cudaMemset(attacks, 0, threads * sizeof(uint64_t)));
     }
 
-    uint64_t LookupCount() {
+    uint64_t MoveCount() {
         //return std::accumulate(counts, counts + threads, sum);
         return static_cast<uint64_t>(loops) * static_cast<uint64_t>(threads);
     }
@@ -112,6 +114,9 @@ __device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ) {
     if constexpr (mode == 19) {
         return Bitrotation::Queen(sq, occ);
     }
+    if constexpr (mode == 20) {
+        return FoldingHash::Queen(sq, occ);
+    }
 }
 template<int mode>
 __device__ __inline__ void Prepare(int threadIdx)
@@ -122,6 +127,7 @@ __device__ __inline__ void Prepare(int threadIdx)
     if constexpr (mode == 12) GeneticObstructionDifference::Prepare(threadIdx);
     if constexpr (mode == 18) Genetic8Ray::Prepare(threadIdx);
     if constexpr (mode == 19) Bitrotation::Prepare(threadIdx);
+    if constexpr (mode == 20) FoldingHash::Prepare(threadIdx);
 }
 
 const char* AlgoName(int mode) {
@@ -147,6 +153,7 @@ const char* AlgoName(int mode) {
         case 17: return "Slide Arithmetic Inline  ";
         case 18: return "C++ Tree Sifter - 8 Rays ";
         case 19: return "Bitrotation o^(o-2r)     ";
+        case 20: return "FoldingHash (uncomplete) ";
         default:
             return "";
     }
@@ -155,23 +162,25 @@ const char* AlgoName(int mode) {
 template<int mode>
 __global__ void cu_GetQueenAttacks(Cuda_Chessprocessor params)
 {
-    const int gid = getIdx();
+    int gid = getIdx();
     uint32_t x = 123456789 * gid, y = 362436069 ^ gid, z = 521288629 + (gid * gid + 1);
-    volatile uint64_t* occs = params.attacks;
-    uint64_t occMock = 0;
+    Prepare<mode>(threadIdx.x);
+    uint64_t* occs = params.attacks;
+    uint64_t occmock = 0;
     const int loopcnt = params.loops;
     for (int i = 0; i < loopcnt; i++) {
         uint32_t sq = cu_rand32(x, y, z) & 63;
         uint64_t occ = cu_rand64(x, y, z);
-        occMock ^= Queen<mode>(sq, occ);
+        occmock ^= Queen<mode>(sq, occ);
     }
-    occs[gid] = occMock;
+    occs[gid] = occmock;
 }
 
 
 template<int mode>
 void TestChessprocessor(int blocks, int threadsperblock) {
     int lookups = blocks * threadsperblock;
+    uint64_t nanoSeconds;
     uint64_t* results = new uint64_t[lookups];
     Cuda_Chessprocessor p(lookups);
     std::vector<double> avg;
@@ -183,35 +192,36 @@ void TestChessprocessor(int blocks, int threadsperblock) {
     //Cuda Streams: 88GLU
     //Cuda compile settings optimisation: 114GLU
     //Optimize algorithm. New world record: 123 Billion Lookups/S for queens. RTX 3080 23.04.2022
-
-    constexpr int streamcount = 4;
-    cudaStream_t streams[streamcount];
-    for (int i = 0; i < streamcount; i++)
+    //Optimize bitrotation algorithm (horizontal ray). New world record: 142 Billion Lookups/S for queens. RTX 3080 28.04.2022
     {
-        gpuErrchk(cudaStreamCreate(streams + i));
+        constexpr int streamcount = 8;
+        cudaStream_t streams[streamcount];
+        for (int i = 0; i < streamcount; i++)
+        {
+            gpuErrchk(cudaStreamCreate(streams + i));
+        }
+        auto t1 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < 16; i++) 
+        {
+            cu_GetQueenAttacks<mode><<<blocks, threadsperblock,0, streams[i % streamcount]>>>(p);
+            cudaVerifyLaunch();
+        }
+        for (int i = 0; i < streamcount; i++)
+        {
+            gpuErrchk(cudaStreamSynchronize(streams[i]));
+        }
+        auto t2 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < streamcount; i++)
+        {
+            gpuErrchk(cudaStreamDestroy(streams[i]));
+        }
+        nanoSeconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 16; i++) 
-    {
-        cu_GetQueenAttacks<mode><<<blocks, threadsperblock,0, streams[i % streamcount]>>>(p);
-        cudaVerifyLaunch();
-    }
-    for (int i = 0; i < streamcount; i++)
-    {
-        gpuErrchk(cudaStreamSynchronize(streams[i]));
-    }
-    auto t2 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < streamcount; i++)
-    {
-        gpuErrchk(cudaStreamDestroy(streams[i]));
-    }
-    double GLU = p.LookupCount() * 16.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
-    avg.push_back(GLU);
     //Erase outliers
     //avg.erase(std::max_element(avg.begin(), avg.end()));
     //avg.erase(std::min_element(avg.begin(), avg.end()));
 
-    double GigaLookups = accumulate(avg.begin(), avg.end(), 0.0) / avg.size();
+    double GigaLookups = p.MoveCount() * 16.0 / nanoSeconds;
     std::cout << GigaLookups << " GigaQueens/s\n";
 
     gpuErrchk(cudaFree(p.attacks));
@@ -247,6 +257,7 @@ int main()
     Pext::Init();
     Hypercube::Init();
     SISSY::Init();
+
     gpuErrchk(cudaDeviceSynchronize());
 
     TestChessprocessor<0>(blocks, threadsperblock);
@@ -269,4 +280,5 @@ int main()
     TestChessprocessor<17>(blocks, threadsperblock);
     TestChessprocessor<18>(blocks, threadsperblock);
     TestChessprocessor<19>(blocks, threadsperblock);
+    TestChessprocessor<20>(blocks, threadsperblock);
 }

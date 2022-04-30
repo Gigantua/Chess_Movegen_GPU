@@ -35,67 +35,58 @@ namespace BobLU {
 		uint64_t queen;
 	};
 
-	constexpr std::array<Rays, 64> Initialize() {
+	constexpr Rays Initialize(int sq) {
 		enum { FILE1, FILE2, FILE3, FILE4, FILE5, FILE6, FILE7, FILE8 };
 		enum { RANK1, RANK2, RANK3, RANK4, RANK5, RANK6, RANK7, RANK8 };
 
-		int sq{}, ts{}, file{}, rank{}, c{};
-		std::array<Rays, 64> ray{};
-		for (sq = 0; sq <= 63; sq++) {
-			file = sq & 7;
-			rank = sq >> 3;
+		int ts{}, file{}, rank{}, c{};
+		Rays ray = {};
+		file = sq & 7;
+		rank = sq >> 3;
 
-			// Northwest
-			ray[sq].rayNW = 0;
-			for (c = 1, ts = sq + 7; file - c >= FILE1 && rank + c <= RANK8; c++, ts += 7) ray[sq].rayNW |= 1ull << ts;
-			ray[sq].rwsNW = ray[sq].rayNW | 0x8000000000000000;
+		// Northwest
+		ray.rayNW = 0;
+		for (c = 1, ts = sq + 7; file - c >= FILE1 && rank + c <= RANK8; c++, ts += 7) ray.rayNW |= 1ull << ts;
+		ray.rwsNW = ray.rayNW | 0x8000000000000000;
 
-			// Northeast
-			ray[sq].rayNE = 0;
-			for (c = 1, ts = sq + 9; file + c <= FILE8 && rank + c <= RANK8; c++, ts += 9) ray[sq].rayNE |= 1ull << ts;
-			ray[sq].rwsNE = ray[sq].rayNE | 0x8000000000000000;
+		// Northeast
+		ray.rayNE = 0;
+		for (c = 1, ts = sq + 9; file + c <= FILE8 && rank + c <= RANK8; c++, ts += 9) ray.rayNE |= 1ull << ts;
+		ray.rwsNE = ray.rayNE | 0x8000000000000000;
 
-			// Southeast
-			ray[sq].raySE = 0;
-			for (c = 1, ts = sq - 7; file + c <= FILE8 && rank - c >= RANK1; c++, ts -= 7) ray[sq].raySE |= 1ull << ts;
-			ray[sq].rwsSE = ray[sq].raySE | 0x0000000000000001;
+		// Southeast
+		ray.raySE = 0;
+		for (c = 1, ts = sq - 7; file + c <= FILE8 && rank - c >= RANK1; c++, ts -= 7) ray.raySE |= 1ull << ts;
+		ray.rwsSE = ray.raySE | 0x0000000000000001;
 
-			// Southwest
-			ray[sq].raySW = 0;
-			for (c = 1, ts = sq - 9; file - c >= FILE1 && rank - c >= RANK1; c++, ts -= 9) ray[sq].raySW |= 1ull << ts;
-			ray[sq].rwsSW = ray[sq].raySW | 0x0000000000000001;
+		// Southwest
+		ray.raySW = 0;
+		for (c = 1, ts = sq - 9; file - c >= FILE1 && rank - c >= RANK1; c++, ts -= 9) ray.raySW |= 1ull << ts;
+		ray.rwsSW = ray.raySW | 0x0000000000000001;
 
-			// North
-			ray[sq].rayNN = 0;
-			for (c = 1, ts = sq + 8; rank + c <= RANK8; c++, ts += 8) ray[sq].rayNN |= 1ull << ts;
-			ray[sq].rwsNN = ray[sq].rayNN | 0x8000000000000000;
+		// North
+		ray.rayNN = 0;
+		for (c = 1, ts = sq + 8; rank + c <= RANK8; c++, ts += 8) ray.rayNN |= 1ull << ts;
+		ray.rwsNN = ray.rayNN | 0x8000000000000000;
 
-			// East
-			ray[sq].rayEE = 0;
-			for (c = 1, ts = sq + 1; file + c <= FILE8; c++, ts += 1) ray[sq].rayEE |= 1ull << ts;
-			ray[sq].rwsEE = ray[sq].rayEE | 0x8000000000000000;
+		// East
+		ray.rayEE = 0;
+		for (c = 1, ts = sq + 1; file + c <= FILE8; c++, ts += 1) ray.rayEE |= 1ull << ts;
+		ray.rwsEE = ray.rayEE | 0x8000000000000000;
 
-			// South
-			ray[sq].raySS = 0;
-			for (c = 1, ts = sq - 8; rank - c >= RANK1; c++, ts -= 8) ray[sq].raySS |= 1ull << ts;
-			ray[sq].rwsSS = ray[sq].raySS | 0x0000000000000001;
+		// South
+		ray.raySS = 0;
+		for (c = 1, ts = sq - 8; rank - c >= RANK1; c++, ts -= 8) ray.raySS |= 1ull << ts;
+		ray.rwsSS = ray.raySS | 0x0000000000000001;
 
-			// West
-			ray[sq].rayWW = 0;
-			for (c = 1, ts = sq - 1; file - c >= FILE1; c++, ts -= 1) ray[sq].rayWW |= 1ull << ts;
-			ray[sq].rwsWW = ray[sq].rayWW | 0x0000000000000001;
+		// West
+		ray.rayWW = 0;
+		for (c = 1, ts = sq - 1; file - c >= FILE1; c++, ts -= 1) ray.rayWW |= 1ull << ts;
+		ray.rwsWW = ray.rayWW | 0x0000000000000001;
 
 
-			ray[sq].queen = 
-				ray[sq].rayNN |
-				ray[sq].rayEE |
-				ray[sq].raySS |
-				ray[sq].rayWW |
-				ray[sq].rayNW |
-				ray[sq].rayNE |
-				ray[sq].raySE |
-				ray[sq].raySW;
-		}
+		ray.queen = ray.rayNN | ray.rayEE | ray.raySS | ray.rayWW |
+					ray.rayNW | ray.rayNE | ray.raySE | ray.raySW;
 		return ray;
 	}
 	__shared__ Rays ray_share[64];
@@ -104,7 +95,7 @@ namespace BobLU {
 	{
 		if (threadIdx < 64)
 		{
-			ray_share[threadIdx] = Initialize()[threadIdx];
+			ray_share[threadIdx] = Initialize(threadIdx);
 		}
 		__syncthreads();
 	}

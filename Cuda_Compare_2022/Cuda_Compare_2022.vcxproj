@@ -25,6 +25,7 @@
     <ClInclude Include="..\cu_Hypercube.h" />
     <ClInclude Include="..\cu_KoggeStone.h" />
     <ClInclude Include="..\cu_Leorik.h" />
+    <ClInclude Include="..\cu_FoldingHash.h" />
     <ClInclude Include="..\cu_NoHeadache.h" />
     <ClInclude Include="..\cu_GeneticObstructionDiff.h" />
     <ClInclude Include="..\cu_ObstructionDiff.h" />

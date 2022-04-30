@@ -19,64 +19,54 @@ namespace HyperbolaQsc {
 	};
 
 	/* Constexpr Init Function */
-	constexpr std::array<Mask, 64> InitMask() {
+	constexpr Mask InitMask(int x) {
 		int r{}, f{}, i{}, j{}, y{};
 		int d[64]{};
 
-		std::array<Mask, 64> MASK{};
-
-		for (int x = 0; x < 64; ++x) {
-			for (y = 0; y < 64; ++y) d[y] = 0;
-			// directions
-			for (i = -1; i <= 1; ++i)
-				for (j = -1; j <= 1; ++j) {
-					if (i == 0 && j == 0) continue;
-					f = x & 07;
-					r = x >> 3;
-					for (r += i, f += j; 0 <= r && r < 8 && 0 <= f && f < 8; r += i, f += j) {
-						y = 8 * r + f;
-						d[y] = 8 * i + j;
-					}
+		for (y = 0; y < 64; ++y) d[y] = 0;
+		// directions
+		for (i = -1; i <= 1; ++i)
+			for (j = -1; j <= 1; ++j) {
+				if (i == 0 && j == 0) continue;
+				f = x & 07;
+				r = x >> 3;
+				for (r += i, f += j; 0 <= r && r < 8 && 0 <= f && f < 8; r += i, f += j) {
+					y = 8 * r + f;
+					d[y] = 8 * i + j;
 				}
-
-			// uint64_t mask
-			Mask& mask = MASK[x];
-			for (y = x - 9; y >= 0 && d[y] == -9; y -= 9) mask.diagonal |= (1ull << y);
-			for (y = x + 9; y < 64 && d[y] == 9; y += 9) mask.diagonal |= (1ull << y);
-
-			for (y = x - 7; y >= 0 && d[y] == -7; y -= 7) mask.antidiagonal |= (1ull << y);
-			for (y = x + 7; y < 64 && d[y] == 7; y += 7) mask.antidiagonal |= (1ull << y);
-
-			for (y = x - 8; y >= 0; y -= 8) mask.vertical |= (1ull << y);
-			for (y = x + 8; y < 64; y += 8) mask.vertical |= (1ull << y);
-		}
-		return MASK;
-	}
-	constexpr std::array<uint8_t, 512> InitRank() {
-
-		std::array<uint8_t, 512> rank_attack{};
-
-		for (int x = 0; x < 64; ++x) {
-			for (int f = 0; f < 8; ++f) {
-				int o = 2 * x;
-				int x2{}, y2{};
-				int b{};
-
-				y2 = 0;
-				for (x2 = f - 1; x2 >= 0; --x2) {
-					b = 1 << x2;
-					y2 |= b;
-					if ((o & b) == b) break;
-				}
-				for (x2 = f + 1; x2 < 8; ++x2) {
-					b = 1 << x2;
-					y2 |= b;
-					if ((o & b) == b) break;
-				}
-				rank_attack[x * 8ull + f] = y2;
 			}
+
+		// uint64_t mask
+		Mask mask{};
+		for (y = x - 9; y >= 0 && d[y] == -9; y -= 9) mask.diagonal |= (1ull << y);
+		for (y = x + 9; y < 64 && d[y] == 9; y += 9) mask.diagonal |= (1ull << y);
+
+		for (y = x - 7; y >= 0 && d[y] == -7; y -= 7) mask.antidiagonal |= (1ull << y);
+		for (y = x + 7; y < 64 && d[y] == 7; y += 7) mask.antidiagonal |= (1ull << y);
+
+		for (y = x - 8; y >= 0; y -= 8) mask.vertical |= (1ull << y);
+		for (y = x + 8; y < 64; y += 8) mask.vertical |= (1ull << y);
+		return mask;
+	}	
+	__inline__ __device__ uint8_t InitRank(int sq) {
+		int x = sq / 8;
+		int f = sq % 8;
+		int o = 2 * x;
+		int x2{}, y2{};
+		int b{};
+
+		y2 = 0;
+		for (x2 = f - 1; x2 >= 0; --x2) {
+			b = 1 << x2;
+			y2 |= b;
+			if ((o & b) == b) break;
 		}
-		return rank_attack;
+		for (x2 = f + 1; x2 < 8; ++x2) {
+			b = 1 << x2;
+			y2 |= b;
+			if ((o & b) == b) break;
+		}
+		return y2;
 	}
 
 	__shared__ Mask mask[64];
@@ -86,13 +76,13 @@ namespace HyperbolaQsc {
 	{
 		if (threadIdx < 64)
 		{
-			mask[threadIdx] = InitMask()[threadIdx];
+			mask[threadIdx] = InitMask(threadIdx);
 		}
 		__syncthreads();
 		if (threadIdx == 0)
 		{
 			for (int i = 0; i < 512; i++) {
-				rank_attack[i] = InitRank()[i];
+				rank_attack[i] = InitRank(i);
 			}
 		}
 		__syncthreads();
