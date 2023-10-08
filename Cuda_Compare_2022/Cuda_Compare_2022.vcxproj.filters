@@ -75,6 +75,9 @@
     <ClInclude Include="..\cu_FoldingHash.h">
       <Filter>Movegen</Filter>
     </ClInclude>
+    <ClInclude Include="..\cu_Bitray.h">
+      <Filter>Movegen</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\kernel.cu" />

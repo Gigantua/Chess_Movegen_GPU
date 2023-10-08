@@ -23,6 +23,7 @@
     <ClInclude Include="..\cu_Genetic8Ray.h" />
     <ClInclude Include="..\cu_Hyperbola.h" />
     <ClInclude Include="..\cu_Hypercube.h" />
+    <ClInclude Include="..\cu_Bitray.h" />
     <ClInclude Include="..\cu_KoggeStone.h" />
     <ClInclude Include="..\cu_Leorik.h" />
     <ClInclude Include="..\cu_FoldingHash.h" />

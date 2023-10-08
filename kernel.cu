@@ -28,6 +28,7 @@
 #include "cu_Genetic8Ray.h"
 #include "cu_Bitrotation.h"
 #include "cu_foldingHash.h"
+#include "cu_bitray.h"
 #include "kernel.h"
 
 /// <summary>
@@ -117,6 +118,9 @@ __device__ __inline__ uint64_t Queen(uint32_t sq, uint64_t occ) {
     if constexpr (mode == 20) {
         return FoldingHash::Queen(sq, occ);
     }
+    if constexpr (mode == 21) {
+        return Bitray::Queen(sq, occ);
+    }
 }
 template<int mode>
 __device__ __inline__ void Prepare(int threadIdx)
@@ -128,6 +132,8 @@ __device__ __inline__ void Prepare(int threadIdx)
     if constexpr (mode == 18) Genetic8Ray::Prepare(threadIdx);
     if constexpr (mode == 19) Bitrotation::Prepare(threadIdx);
     if constexpr (mode == 20) FoldingHash::Prepare(threadIdx);
+    if constexpr (mode == 21) Bitray::Prepare(threadIdx);
+
 }
 
 const char* AlgoName(int mode) {
@@ -154,6 +160,7 @@ const char* AlgoName(int mode) {
         case 18: return "C++ Tree Sifter - 8 Rays ";
         case 19: return "Bitrotation o^(o-2r)     ";
         case 20: return "FoldingHash (uncomplete) ";
+        case 21: return "Bitray 2023 version      ";
         default:
             return "";
     }
@@ -281,4 +288,5 @@ int main()
     TestChessprocessor<18>(blocks, threadsperblock);
     TestChessprocessor<19>(blocks, threadsperblock);
     TestChessprocessor<20>(blocks, threadsperblock);
+    TestChessprocessor<21>(blocks, threadsperblock);
 }
